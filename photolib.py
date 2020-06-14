@@ -1,19 +1,11 @@
 #!/usr/bin/env python3
 
-# Usage: photolib.py SOURCE DESTINATION
-#
-# Where SOURCE is the bundle directory of the photo library and DESTINATION
-# is a directory you want the results to go in. I use a bunch of text file
-# append operations in here, so make sure you delete the destination
-# directory if you want to re-run it; the image files will happily get
-# overwritten, but you'll end up with confusing or duplicated indices.
-
 import os
 import plistlib
 import shutil
 import sys
 
-# thanks StackOverflow1
+# thanks StackOverflow!
 def remove_prefix(text, prefix):
     if text.startswith(prefix):
         return text[len(prefix):]
@@ -32,8 +24,8 @@ f = open(os.path.join(source, "AlbumData.xml"), "rb")
 plist = plistlib.load(f)
 
 # These are default/builtin iPhoto album names that don't contain
-# meaningful semantic information for us. Skip 'em so they don't
-# end up in the albums index.
+# meaningful information for us. Skip 'em so they don't end up in
+# the albums index.
 skipAlbums = [
     "Photos",
     "Last 12 Months",
@@ -47,20 +39,28 @@ skipAlbums = [
 path_prefix = plist["Archive Path"] + os.sep
 
 # Album list and file paths out to the 'albums.txt' file
+d = {}
 for album in plist["List of Albums"]:
     name = album["AlbumName"]
     if name in skipAlbums:
         continue
 
-    albumlist = open(os.path.join(dest, "albums.txt"), "a")
-    print(name, file=albumlist)
+    d[name] = []
     for key in album["KeyList"]:
         pic = plist["Master Image List"][key]
         path = remove_prefix(pic["ImagePath"], path_prefix)
-        print(" ", path, file=albumlist)
-    albumlist.close()
+        d[name].append(path)
+
+f = open(os.path.join(dest, "albums.txt"), "w")
+for key in sorted(d.keys()):
+    print(key, file=f)
+    for item in sorted(d[key]):
+        print(" ", item, file=f)
+    print("", file=f)
+f.close()
 
 # Copy pictures over
+i = {}
 for pic in plist["Master Image List"].values():
     path = remove_prefix(pic["ImagePath"], path_prefix)
 
@@ -86,13 +86,25 @@ for pic in plist["Master Image List"].values():
 
     shutil.copyfile(imagesrc, imagedst)
 
-    # write captions and comments to the index
-    i = open(os.path.join(dstdir, "index.txt"), "a")
-    print(filename, file=i)
-    if pic["Caption"]:
-        print(" ", pic["Caption"], file=i)
-    if pic["Comment"]:
-        print(" ", pic["Comment"], file=i)
-    print("", file=i)
-    i.close()
+    # save captions and comments to the index table
+    d = os.path.dirname(path)
+    if not d in i.keys():
+        i[d] = {}
+    i[d][filename] = {}
+    i[d][filename]["Caption"] = pic["Caption"]
+    i[d][filename]["Comment"] = pic["Comment"]
 
+# write out indices
+for d in i.keys():
+    f = open(os.path.join(dest, d, "index.txt"), "w")
+    index = i[d]
+    for filename in sorted(index.keys()):
+        print(filename, file=f)
+        caption = index[filename]["Caption"]
+        comment = index[filename]["Comment"]
+        if caption:
+            print(" ", caption, file=f)
+        if comment:
+            print(" ", comment, file=f)
+        print("", file=f)
+    f.close()
