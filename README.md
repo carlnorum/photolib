@@ -1,5 +1,6 @@
 # photolib
 
+```
 usage: photolib.py [-h] [--verbose] source dest
 
 Extract information and photos from ancient iPhoto libraries.
@@ -11,3 +12,4 @@ positional arguments:
 optional arguments:
   -h, --help     show this help message and exit
   --verbose, -v  enable verbose logging
+```
