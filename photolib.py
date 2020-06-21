@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 
 import argparse
+import datetime
+import piexif
 import os
 import plistlib
 import shutil
 import sys
-
 
 VERBOSE = False
 
@@ -67,6 +68,14 @@ def dump_album_info(dest, album_info):
             print("", file=f)
 
 
+def set_exif_date(path, date):
+    tags = piexif.load(path)
+    datestr = date.strftime('%Y:%m:%d %H:%M:%S')
+    tags['Exif'][piexif.ExifIFD.DateTimeDigitized] = datestr
+    tags['Exif'][piexif.ExifIFD.DateTimeOriginal] = datestr
+    piexif.insert(piexif.dump(tags), path)
+
+
 def copy_photos(source, dest, album_data):
     path_prefix = album_path_prefx(album_data)
     i = {}
@@ -94,11 +103,16 @@ def copy_photos(source, dest, album_data):
 
         shutil.copyfile(imagesrc, imagedst)
 
+        # exif date
+        date = datetime.datetime.fromtimestamp(pic["DateAsTimerInterval"] + 978307200); # Cocoa epoch
+        set_exif_date(imagedst, date)
+
         # save captions and comments to the index table
         d = os.path.dirname(path)
         if not d in i.keys():
             i[d] = {}
         i[d][filename] = {}
+        i[d][filename]["Date"] = date
         i[d][filename]["Caption"] = pic["Caption"]
         i[d][filename]["Comment"] = pic["Comment"]
 
@@ -109,6 +123,7 @@ def copy_photos(source, dest, album_data):
                 print(filename, file=f)
                 caption = index[filename]["Caption"]
                 comment = index[filename]["Comment"]
+                print(" ", index[filename]["Date"], file=f)
                 if caption:
                     print(" ", caption, file=f)
                 if comment:
