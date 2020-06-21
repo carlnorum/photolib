@@ -2,8 +2,9 @@
 
 import argparse
 import datetime
-import piexif
+import filetype
 import os
+import piexif
 import plistlib
 import shutil
 import sys
@@ -69,6 +70,9 @@ def dump_album_info(dest, album_info):
 
 
 def set_exif_date(path, date):
+    if filetype.guess(path) != filetype.get_type("image/jpeg"):
+       return
+
     tags = piexif.load(path)
     datestr = date.strftime('%Y:%m:%d %H:%M:%S')
     tags['Exif'][piexif.ExifIFD.DateTimeDigitized] = datestr
